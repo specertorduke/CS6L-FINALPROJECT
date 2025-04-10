@@ -39,6 +39,9 @@ class BST:
                 return _search(node.right, key)
         return _search(self.root, key)
 
+    def clear(self):
+        self.root = None
+
 # Hash Table Implementation
 class HashTable:
     def __init__(self, size=100):
@@ -57,11 +60,15 @@ class HashTable:
         h = self._hash(key)
         return key in self.table[h]
 
+    def clear(self):
+        self.table = [[] for _ in range(self.size)]
+
 # GUI
 class App:
     def __init__(self, root):
         self.root = root
         self.root.title("BST vs Hash Table Lookup")
+        self.root.geometry("1000x600")
         self.bst = BST()
         self.ht = HashTable()
         self.values = []
@@ -69,20 +76,21 @@ class App:
         self.setup_ui()
 
     def setup_ui(self):
-        frame = tk.Frame(self.root)
-        frame.pack()
+        control_frame = tk.Frame(self.root, padx=10, pady=10)
+        control_frame.pack(side=tk.TOP, fill=tk.X)
 
-        tk.Label(frame, text="Value:").grid(row=0, column=0)
-        self.entry = tk.Entry(frame)
-        self.entry.grid(row=0, column=1)
+        tk.Label(control_frame, text="Value:").pack(side=tk.LEFT)
+        self.entry = tk.Entry(control_frame)
+        self.entry.pack(side=tk.LEFT)
 
-        tk.Button(frame, text="Insert", command=self.insert_value).grid(row=0, column=2)
-        tk.Button(frame, text="Search", command=self.search_value).grid(row=0, column=3)
-        tk.Button(frame, text="Insert Random (50)", command=self.insert_random).grid(row=1, column=1)
-        tk.Button(frame, text="Compare Lookup Times", command=self.compare_times).grid(row=1, column=2)
+        tk.Button(control_frame, text="Insert", command=self.insert_value).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Search", command=self.search_value).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Insert Random (50)", command=self.insert_random).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Compare Lookup Times", command=self.compare_times).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Clear All", command=self.reset_all).pack(side=tk.LEFT, padx=5)
 
-        self.canvas = tk.Canvas(self.root, width=800, height=400, bg="white")
-        self.canvas.pack()
+        self.canvas = tk.Canvas(self.root, width=1000, height=500, bg="white")
+        self.canvas.pack(fill=tk.BOTH, expand=True)
 
     def insert_value(self):
         try:
@@ -121,6 +129,10 @@ class App:
             messagebox.showerror("Invalid Input", "Please enter an integer.")
 
     def compare_times(self):
+        if not self.values:
+            messagebox.showwarning("No Data", "Insert values first to compare.")
+            return
+
         bst_times = []
         ht_times = []
         search_vals = random.sample(self.values, min(30, len(self.values)))
@@ -145,27 +157,33 @@ class App:
 
     def draw_visuals(self):
         self.canvas.delete("all")
-        self.draw_tree(self.bst.root, 400, 20, 180)
-        self.draw_hashtable(500, 250)
+        self.draw_tree(self.bst.root, 300, 30, 100)
+        self.draw_hashtable(650, 20)
 
     def draw_tree(self, node, x, y, offset):
         if not node:
             return
         if node.left:
-            self.canvas.create_line(x, y, x - offset, y + 50)
-            self.draw_tree(node.left, x - offset, y + 50, offset // 2)
+            self.canvas.create_line(x, y, x - offset, y + 60, fill="gray")
+            self.draw_tree(node.left, x - offset, y + 60, offset // 1.5)
         if node.right:
-            self.canvas.create_line(x, y, x + offset, y + 50)
-            self.draw_tree(node.right, x + offset, y + 50, offset // 2)
+            self.canvas.create_line(x, y, x + offset, y + 60, fill="gray")
+            self.draw_tree(node.right, x + offset, y + 60, offset // 1.5)
         self.canvas.create_oval(x - 15, y - 15, x + 15, y + 15, fill="lightblue")
         self.canvas.create_text(x, y, text=str(node.key))
 
     def draw_hashtable(self, x, y):
         for i in range(10):
             bucket = self.ht.table[i]
-            self.canvas.create_rectangle(x, y + i*25, x + 200, y + 25 + i*25, outline="black")
+            self.canvas.create_rectangle(x, y + i*30, x + 250, y + 30 + i*30, outline="black", fill="#f0f0f0")
             text = f"{i}: " + ", ".join(map(str, bucket[:5]))
-            self.canvas.create_text(x + 100, y + 12 + i*25, text=text, anchor="center")
+            self.canvas.create_text(x + 125, y + 15 + i*30, text=text, anchor="center", font=("Courier", 10))
+
+    def reset_all(self):
+        self.bst.clear()
+        self.ht.clear()
+        self.values.clear()
+        self.canvas.delete("all")
 
 if __name__ == "__main__":
     root = tk.Tk()
