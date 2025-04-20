@@ -77,22 +77,24 @@ class App:
 
     def setup_ui(self):
         control_frame = tk.Frame(self.root, padx=10, pady=10)
+        control_frame = tk.Frame(self.root, padx=10, pady=10, bg="lightsteelblue") # Set background color for control frame
         control_frame.pack(side=tk.TOP, fill=tk.X)
 
-        tk.Label(control_frame, text="Value:").pack(side=tk.LEFT)
+        tk.Label(control_frame, text="Value:", bg="lightgreen", fg="darkblue", font=("Arial", 12, "bold")).pack(side=tk.LEFT)
         self.entry = tk.Entry(control_frame)
         self.entry.pack(side=tk.LEFT)
 
-        tk.Button(control_frame, text="Insert", command=self.insert_value).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text="Search", command=self.search_value).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text="Insert Random (50)", command=self.insert_random).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text="Compare Lookup Times", command=self.compare_times).pack(side=tk.LEFT, padx=5)
-        tk.Button(control_frame, text="Clear All", command=self.reset_all).pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Insert", command=self.insert_value, bg="#4CAF50", fg="white").pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Search", command=self.search_value, bg="#4CAF50", fg="white").pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Insert Random (50)", command=self.insert_random, bg="#4CAF50", fg="white").pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Compare Lookup Times", command=self.compare_times, bg="#4CAF50", fg="white").pack(side=tk.LEFT, padx=5)
+        tk.Button(control_frame, text="Clear All", command=self.reset_all, bg="#f44336", fg="white").pack(side=tk.LEFT, padx=5)
+
 
         canvas_frame = tk.Frame(self.root)
         canvas_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.canvas = tk.Canvas(canvas_frame, bg="white")
+        self.canvas = tk.Canvas(canvas_frame, bg="aliceblue") # Set background color for canvas
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         scrollbar = tk.Scrollbar(canvas_frame, orient=tk.VERTICAL, command=self.canvas.yview)
