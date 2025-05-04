@@ -128,12 +128,7 @@ class App:
         random_btn = ttk.Button(action_frame, text="Insert Random (50)", 
                             command=self.insert_random)
         random_btn.pack(fill=tk.X, pady=2)
-
-        # Add large dataset button
-        large_dataset_btn = ttk.Button(action_frame, text="Add 10,000 Items", 
-                                    command=self.insert_large_dataset)
-        large_dataset_btn.pack(fill=tk.X, pady=2)
-
+        
         # Replace the single comparison button with dropdown + button
         compare_frame = ttk.Frame(action_frame)
         compare_frame.pack(fill=tk.X, pady=2)
@@ -314,61 +309,40 @@ class App:
             widget.destroy()
         
         # Main title for the comparison tab
-        ttk.Label(self.comp_inner_frame, text="Performance Comparison Across Sample Sizes", 
-                font=("Segoe UI", 14, "bold")).pack(pady=(10, 5))
+        ttk.Label(self.comp_inner_frame, text="Performance Comparison Across Different Sample Sizes", 
+                  font=("Segoe UI", 14, "bold")).pack(pady=(10, 5))
         
         # Processing indicator
         process_label = ttk.Label(self.comp_inner_frame, text="Processing... Please wait")
         process_label.pack(pady=5)
         self.root.update()
         
-        # Define all standard sample sizes
-        all_sample_sizes = [30, 100, 500, 1000, 5000, 10000]
-        
-        # Get the selected maximum sample size from the dropdown
-        try:
-            # Parse the value, removing any commas
-            max_sample = int(self.search_count.get().replace(',', ''))
-            
-            # Include all sample sizes up to and including the selected value
-            sample_sizes = [size for size in all_sample_sizes if size <= max_sample]
-        except ValueError:
-            # Fallback to default sample sizes if there's an error
-            sample_sizes = [100]
-        
-        # Check if we have enough data
+        # Define the sample sizes to test
+        sample_sizes = [30, 100, 500, 1000, 5000]
         available_samples = [size for size in sample_sizes if size <= len(self.values)]
-        
-        # Show a message if none of the sample sizes can be used
         if not available_samples:
-            messagebox.showwarning(
-                "Insufficient Data", 
-                f"You selected a maximum sample size of {max_sample} but only have {len(self.values)} values. " 
-                f"Please add more data or select a smaller sample size."
-            )
-            process_label.destroy()
-            return
+            messagebox.showinfo("Info", f"Not enough values. Using all {len(self.values)} available values.")
+            available_samples = [len(self.values)]
         
-        # Get the test type selection from the combobox
+        # Get the test type selection from the new combobox
         test_type = self.test_type.get()
         all_stats = []
         
-        # Run tests for each available sample size
         for sample_size in available_samples:
             bst_times = []
             ht_times = []
             
             # Select lookup values based on test type
             if test_type == "Random":
-                search_vals = random.sample(self.values, sample_size)
+                search_vals = random.sample(self.values, min(sample_size, len(self.values)))
             elif test_type == "Best-case":
-                # Best-case: Search for the first inserted value
-                search_vals = [self.values[0]] * sample_size
+                # Best-case: Search for the first inserted value (if available)
+                search_vals = [self.values[0]] * sample_size if self.values else [0] * sample_size
             elif test_type == "Worst-case":
-                # Worst-case: Searching for a value known not to exist
+                # Worst-case: Searching for a value known not to exist (e.g. -1)
                 search_vals = [-1] * sample_size
             else:
-                search_vals = random.sample(self.values, sample_size)
+                search_vals = random.sample(self.values, min(sample_size, len(self.values)))
             
             # Perform searches and measure times
             for val in search_vals:
@@ -395,8 +369,8 @@ class App:
             section_frame = ttk.Frame(self.comp_inner_frame)
             section_frame.pack(fill=tk.X, pady=(20, 5))
             ttk.Label(section_frame, 
-                    text=f"Sample Size: {sample_size} Searches", 
-                    font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=20)
+                      text=f"Sample Size: {sample_size} Searches", 
+                      font=("Segoe UI", 12, "bold")).pack(side=tk.LEFT, padx=20)
             stats_text = (
                 f"BST Avg: {bst_avg:.8f}s | Hash Table Avg: {ht_avg:.8f}s | "
                 f"Speed Difference: {speedup:.1f}x"
@@ -423,11 +397,6 @@ class App:
             
             # Add a visual separator
             ttk.Separator(self.comp_inner_frame, orient='horizontal').pack(fill=tk.X, padx=20, pady=10)
-        
-        # Also update the label to clarify dropdown functionality
-        for widget in compare_frame.winfo_children():
-            if isinstance(widget, ttk.Label) and widget.cget("text") == "Search Sample:":
-                widget.configure(text="Max Search Sample:")
         
         process_label.destroy()
         self.comp_canvas.configure(scrollregion=self.comp_canvas.bbox("all"))
@@ -857,60 +826,6 @@ class App:
                         font=("Segoe UI", 12, "bold"), fill=result_color)
         canvas.create_text(400, y_pos+20, text=bucket_text, 
                         font=("Segoe UI", 10), fill="#333333", width=650)
-        
-    def insert_large_dataset(self):
-        """Insert 10,000 random integers for large-scale performance testing"""
-        # Show a confirmation dialog since this might take a moment
-        confirm = messagebox.askyesno(
-            "Add Large Dataset", 
-            "This will add 10,000 random values.\nThis operation may take a few moments. Continue?"
-        )
-        
-        if not confirm:
-            return
-        
-        # Show a progress indicator
-        progress_window = tk.Toplevel(self.root)
-        progress_window.title("Adding Data")
-        progress_window.geometry("300x100")
-        progress_window.transient(self.root)
-        progress_window.grab_set()
-        
-        ttk.Label(progress_window, text="Adding 10,000 random values...", 
-                font=("Segoe UI", 10)).pack(pady=10)
-        
-        progress = ttk.Progressbar(progress_window, orient="horizontal", 
-                                length=250, mode="indeterminate")
-        progress.pack(pady=10)
-        progress.start()
-        
-        # Update the window to show progress
-        progress_window.update()
-        
-        # Add the random values
-        batch_size = 500  # Process in batches to keep UI responsive
-        total_items = 10000
-        
-        for i in range(0, total_items, batch_size):
-            # Process a batch of items
-            for _ in range(min(batch_size, total_items - i)):
-                val = random.randint(1, 50000)  # Larger range to reduce duplicates
-                self.values.append(val)
-                self.bst.insert(val)
-                self.ht.insert(val)
-            
-            # Update progress periodically
-            progress_window.update()
-        
-        # Close progress window
-        progress_window.destroy()
-        
-        # Update the UI
-        self.update_stats()
-        self.draw_visuals()
-        
-        # Show completion message
-        messagebox.showinfo("Data Added", f"Successfully added 10,000 random values.\nTotal items: {len(self.values)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
