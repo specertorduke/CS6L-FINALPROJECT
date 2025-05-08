@@ -77,9 +77,11 @@ class App:
         # Style configuration
         self.style = ttk.Style()
         self.style.theme_use('clam')
-        self.style.configure('TButton', font=('Segoe UI', 10), background='#4a86e8', foreground='white')
-        self.style.configure('TFrame', background='#f5f5f5')
-        self.style.configure('TLabel', background='#f5f5f5', font=('Segoe UI', 10))
+        self.style.configure('TFrame', background='#f8f9fa')
+        self.style.configure('TButton', font=('Segoe UI', 10), padding=6)
+        self.style.configure('TLabel', background='#f8f9fa', font=('Segoe UI', 10))
+        self.style.configure('Header.TLabel', font=('Segoe UI', 12, 'bold'))
+        self.style.map('TButton', background=[('active', '#4a86e8')])
         
         self.setup_ui()
 
