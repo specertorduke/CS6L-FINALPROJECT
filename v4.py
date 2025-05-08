@@ -139,7 +139,8 @@ class App:
         # Configure frame styles
         self.style.configure('Main.TFrame', background=self.colors["light_bg"])
         self.style.configure('Card.TFrame', background='white', relief='solid', borderwidth=1)
-        
+        self.style.configure('TabContent.TFrame', background='white', relief='flat', borderwidth=0)
+
         # Configure label styles
         self.style.configure('TLabel', background=self.colors["light_bg"], foreground=self.colors["text"], 
                           font=("Segoe UI", 10))
@@ -375,16 +376,16 @@ class App:
         self.viz_notebook = ttk.Notebook(parent)
         self.viz_notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Binary Search Tree visualization tab
-        bst_frame = ttk.Frame(self.viz_notebook, padding=5)
+        # Binary Search Tree visualization tab - apply white background
+        bst_frame = ttk.Frame(self.viz_notebook, padding=5, style='TabContent.TFrame')
         self.viz_notebook.add(bst_frame, text="Binary Search Tree")
         
-        # Hash Table visualization tab
-        hash_frame = ttk.Frame(self.viz_notebook, padding=5)
+        # Hash Table visualization tab - apply white background
+        hash_frame = ttk.Frame(self.viz_notebook, padding=5, style='TabContent.TFrame')
         self.viz_notebook.add(hash_frame, text="Hash Table")
         
-        # Performance Comparison tab
-        comp_frame = ttk.Frame(self.viz_notebook, padding=5)
+        # Performance Comparison tab - apply white background
+        comp_frame = ttk.Frame(self.viz_notebook, padding=5, style='TabContent.TFrame')
         self.viz_notebook.add(comp_frame, text="Performance Comparison")
         
         # Setup each visualization
@@ -395,21 +396,21 @@ class App:
     def setup_bst_visualization(self, parent):
         """Setup the BST visualization tab"""
         # Info panel at the top
-        info_frame = ttk.Frame(parent)
+        info_frame = ttk.Frame(parent, style='TabContent.TFrame')
         info_frame.pack(fill=tk.X, pady=(0, 5))
         
         ttk.Label(info_frame, text="Binary Search Tree Visualization", 
                 style="Heading.TLabel").pack(side=tk.LEFT)
         
         # Legend for BST
-        legend_frame = ttk.Frame(info_frame)
+        legend_frame = ttk.Frame(info_frame, style='TabContent.TFrame')
         legend_frame.pack(side=tk.RIGHT)
         
         self.create_legend_item(legend_frame, self.colors["primary"], "Node")
         self.create_legend_item(legend_frame, "#666666", "Edge")
         
         # Scrollable canvas for BST
-        canvas_frame = ttk.Frame(parent)
+        canvas_frame = ttk.Frame(parent, style='TabContent.TFrame')
         canvas_frame.pack(fill=tk.BOTH, expand=True)
         
         self.canvas = tk.Canvas(canvas_frame, bg="white", highlightthickness=0)
@@ -472,21 +473,21 @@ class App:
     def setup_hash_visualization(self, parent):
         """Setup the Hash Table visualization tab"""
         # Info panel at the top
-        info_frame = ttk.Frame(parent)
+        info_frame = ttk.Frame(parent, style='TabContent.TFrame')
         info_frame.pack(fill=tk.X, pady=(0, 5))
         
         ttk.Label(info_frame, text="Hash Table Visualization", 
                 style="Heading.TLabel").pack(side=tk.LEFT)
         
         # Legend for Hash Table
-        legend_frame = ttk.Frame(info_frame)
+        legend_frame = ttk.Frame(info_frame, style='TabContent.TFrame')
         legend_frame.pack(side=tk.RIGHT)
         
         self.create_legend_item(legend_frame, "#e6e6e6", "Bucket Index")
         self.create_legend_item(legend_frame, "#f0f0f0", "Bucket Values")
         
         # Scrollable canvas for Hash Table
-        hash_canvas_frame = ttk.Frame(parent)
+        hash_canvas_frame = ttk.Frame(parent, style='TabContent.TFrame')
         hash_canvas_frame.pack(fill=tk.BOTH, expand=True)
         
         self.hash_canvas = tk.Canvas(hash_canvas_frame, bg="white", highlightthickness=0)
@@ -513,14 +514,14 @@ class App:
     def setup_comparison_visualization(self, parent):
         """Setup the Performance Comparison tab"""
         # Info panel at the top
-        info_frame = ttk.Frame(parent)
+        info_frame = ttk.Frame(parent, style='TabContent.TFrame')
         info_frame.pack(fill=tk.X, pady=(0, 5))
         
         ttk.Label(info_frame, text="Performance Comparison", 
                 style="Heading.TLabel").pack(side=tk.LEFT)
         
         # Create scrollable canvas for results
-        comp_canvas_frame = ttk.Frame(parent)
+        comp_canvas_frame = ttk.Frame(parent, style='TabContent.TFrame')
         comp_canvas_frame.pack(fill=tk.BOTH, expand=True)
         
         self.comp_canvas = tk.Canvas(comp_canvas_frame, bg="white", highlightthickness=0)
