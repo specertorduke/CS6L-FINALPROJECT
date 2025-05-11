@@ -43,6 +43,31 @@ class BST:
     def clear(self):
         self.root = None
 
+    def inorder_traversal(self, node, result):
+        """Helper method to perform an in-order traversal and collect keys."""
+        if node:
+            self.inorder_traversal(node.left, result)
+            result.append(node.key)
+            self.inorder_traversal(node.right, result)
+
+    def balance(self):
+        """Balance the tree by rebuilding it from a sorted array."""
+        def build_balanced_tree(keys, start, end):
+            if start > end:
+                return None
+            mid = (start + end) // 2
+            node = BSTNode(keys[mid])
+            node.left = build_balanced_tree(keys, start, mid - 1)
+            node.right = build_balanced_tree(keys, mid + 1, end)
+            return node
+
+        # Get all keys in sorted order
+        keys = []
+        self.inorder_traversal(self.root, keys)
+
+        # Rebuild the tree
+        self.root = build_balanced_tree(keys, 0, len(keys) - 1)
+
 # Hash Table Implementation
 class HashTable:
     def __init__(self, size=100):
@@ -266,7 +291,7 @@ class App:
                               command=self.insert_value)
         insert_btn.pack(fill=tk.X, pady=2)
         ToolTip(insert_btn, "Insert the value into both data structures")
-        
+
         # Bulk Insert Section
         bulk_frame = ttk.LabelFrame(parent, text="Bulk Insert", padding=10)
         bulk_frame.pack(fill=tk.X, pady=10)
@@ -289,6 +314,11 @@ class App:
                             style="Warning.TButton", command=self.reset_all)
         reset_btn.pack(fill=tk.X, pady=2)
         ToolTip(reset_btn, "Remove all data from both structures")
+
+        balance_btn = ttk.Button(manage_frame, text="Balance Tree", 
+                         style="Success.TButton", command=self.balance_tree)
+        balance_btn.pack(fill=tk.X, pady=2)
+        ToolTip(balance_btn, "Balance the Binary Search Tree")
 
     def setup_test_tab(self, parent):
         """Setup the Testing tab"""
@@ -1657,7 +1687,11 @@ class App:
             messagebox.showinfo("Data Added", 
                              f"Successfully added 10,000 random values.\nTotal items: {len(self.values)}")
             self.update_status(f"Added 10,000 random values. Total items: {len(self.values)}")
-
+    def balance_tree(self):
+        """Balance the Binary Search Tree."""
+        self.bst.balance()
+        self.draw_visuals()
+        self.update_status("Balanced the Binary Search Tree")
 
 if __name__ == "__main__":
     root = tk.Tk()
