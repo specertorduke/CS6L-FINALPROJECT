@@ -911,10 +911,8 @@ class App:
             eff_frame = ttk.Frame(header_frame, style='Card.TFrame')
             eff_frame.pack(side=tk.RIGHT)
             
-            ttk.Label(eff_frame, text=f"{faster} was ", font=("Segoe UI", 10)).pack(side=tk.LEFT)
             ttk.Label(eff_frame, text=f"{faster} was ", font=("Segoe UI", 10), style='Card.TLabel').pack(side=tk.LEFT)
             ttk.Label(eff_frame, text=f"{factor:.1f}x", style='Card.TLabel', font=("Segoe UI", 10, "bold"), foreground=self.colors["secondary"]).pack(side=tk.LEFT)
-            ttk.Label(eff_frame, text=" faster", font=("Segoe UI", 10)).pack(side=tk.LEFT)
             ttk.Label(eff_frame, text=" faster", font=("Segoe UI", 10), style='Card.TLabel').pack(side=tk.LEFT)
             
             # Stats in the middle
