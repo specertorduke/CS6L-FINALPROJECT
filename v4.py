@@ -12,11 +12,11 @@ class BSTNode:
         self.key = key
         self.left = None
         self.right = None
-
+        
 class BST:
     def __init__(self):
         self.root = None
-
+        
     def insert(self, key):
         def _insert(node, key):
             if not node:
@@ -125,12 +125,17 @@ class App:
         self.root.title("Data Structure Visualization")
         self.root.geometry("1200x750")
         self.root.configure(bg="#f5f5f5")
-        
+        self.large_tree_threshold = 2000
+
         # Initialize data structures
         self.bst = BST()
         self.ht = HashTable()
         self.values = []
         
+        # ← Add this line to initialize zoom level
+        self.bst_zoom = 1.0
+        self.max_depth_var = tk.IntVar(value=0)
+
         # Setup color scheme
         self.colors = {
             "primary": "#4285f4",      # Google Blue
@@ -167,8 +172,8 @@ class App:
         self.style.configure('TabContent.TFrame', background='white', relief='flat', borderwidth=0)
 
         # Configure label styles
-        self.style.configure('TLabel', background=self.colors["light_bg"], foreground=self.colors["text"], 
-                          font=("Segoe UI", 10))
+        self.style.configure('TLabel', background=self.colors["light_bg"], foreground=self.colors["text"], font=("Segoe UI", 10))
+        self.style.configure('Card.TLabel', background='white', foreground=self.colors["text"], font=("Segoe UI", 10))
         self.style.configure('Title.TLabel', font=("Segoe UI", 16, "bold"))
         self.style.configure('Subtitle.TLabel', font=("Segoe UI", 14, "bold"))
         self.style.configure('Heading.TLabel', font=("Segoe UI", 12, "bold"))
@@ -199,10 +204,39 @@ class App:
                     foreground=[('active', self.colors["text"]), ('pressed', self.colors["text"])])
         
         # Notebook style (tabs)
-        self.style.configure('TNotebook', background=self.colors["light_bg"], borderwidth=0)
-        self.style.configure('TNotebook.Tab', padding=(10, 5), font=("Segoe UI", 10))
-        self.style.map('TNotebook.Tab', background=[('selected', 'white')], 
-                    foreground=[('selected', self.colors["primary"])])
+        self.style.configure(
+            'TNotebook',
+            background='white',        # content pane
+            borderwidth=0,
+            tabmargins=[2, 5, 2, 5]     # left, top, right, bottom
+        )
+        self.style.configure(
+            'TNotebook.Tab',
+            padding=(10, 5),
+            font=("Segoe UI", 10),
+            background=self.colors["light_bg"],    # un‐selected
+            borderwidth=0
+        )
+        self.style.map(
+            'TNotebook.Tab',
+            background=[
+                ('selected', 'white'),            # selected = white
+                ('!selected', self.colors["light_bg"])
+            ],
+            foreground=[
+                ('selected', self.colors["primary"]),
+                ('!selected', self.colors["text"])
+            ]
+        )
+
+        # Card LabelFrame → white background
+        self.style.configure('Card.TLabelframe',
+                             background='white',
+                             relief='solid',
+                             borderwidth=1)
+        self.style.configure('Card.TLabelframe.Label',
+                             background='white',
+                             foreground=self.colors["text"])
 
     def setup_ui(self):
         """Set up the main user interface with dashboard layout"""
@@ -248,15 +282,15 @@ class App:
         control_tabs.pack(fill=tk.BOTH, expand=True)
         
         # Data Management Tab
-        data_tab = ttk.Frame(control_tabs, padding=10)
+        data_tab = ttk.Frame(control_tabs, style='TabContent.TFrame', padding=10)
         control_tabs.add(data_tab, text="Data")
         
         # Testing Tab
-        test_tab = ttk.Frame(control_tabs, padding=10)
+        test_tab = ttk.Frame(control_tabs, style='TabContent.TFrame', padding=10)
         control_tabs.add(test_tab, text="Test")
         
         # Analysis Tab
-        analysis_tab = ttk.Frame(control_tabs, padding=10)
+        analysis_tab = ttk.Frame(control_tabs, style='TabContent.TFrame', padding=10)
         control_tabs.add(analysis_tab, text="Analysis")
         
         # Setup each tab's content
@@ -266,22 +300,30 @@ class App:
         
         # Stats section at the bottom
         stats_frame = ttk.LabelFrame(self.control_panel, text="Statistics", padding=10)
+        stats_frame = ttk.LabelFrame(self.control_panel, text="Statistics", padding=10,  style='Card.TLabelframe')
         stats_frame.pack(fill=tk.X, pady=10)
         
         self.stats_label = ttk.Label(stats_frame, text="Items: 0\nBST Height: 0")
         self.stats_label.pack(fill=tk.X)
 
+        control_tabs = ttk.Notebook(self.control_panel, style='TNotebook')
+        control_tabs.pack(fill=tk.BOTH, expand=True)
+
     def setup_data_tab(self, parent):
         """Setup the Data Management tab"""
         # Manual Insert Section
         manual_frame = ttk.LabelFrame(parent, text="Manual Insert", padding=10)
+        manual_frame = ttk.LabelFrame(parent, text="Manual Insert", padding=10, style='Card.TLabelframe')
         manual_frame.pack(fill=tk.X, pady=5)
         
         input_frame = ttk.Frame(manual_frame)
+        input_frame = ttk.Frame(manual_frame, style='Card.TFrame')
         input_frame.pack(fill=tk.X, pady=5)
         
         ttk.Label(input_frame, text="Value:").pack(side=tk.LEFT, padx=(0, 5))
-        self.entry = ttk.Entry(input_frame, width=10)
+        self.style.configure('Clean.TEntry', borderwidth=1)
+        self.style.map('Clean.TEntry', fieldbackground=[('!disabled', 'white')])
+        self.entry = ttk.Entry(input_frame, width=10, style='Clean.TEntry')
         self.entry.pack(side=tk.LEFT, padx=(0, 5))
         
         button_frame = ttk.Frame(manual_frame)
@@ -294,6 +336,7 @@ class App:
 
         # Bulk Insert Section
         bulk_frame = ttk.LabelFrame(parent, text="Bulk Insert", padding=10)
+        bulk_frame = ttk.LabelFrame(parent, text="Bulk Insert", padding=10, style='Card.TLabelframe')
         bulk_frame.pack(fill=tk.X, pady=10)
         
         random_btn = ttk.Button(bulk_frame, text="Add 50 Random Values", 
@@ -308,6 +351,7 @@ class App:
         
         # Data Management Section
         manage_frame = ttk.LabelFrame(parent, text="Data Management", padding=10)
+        manage_frame = ttk.LabelFrame(parent, text="Data Management", padding=10, style='Card.TLabelframe')
         manage_frame.pack(fill=tk.X, pady=10)
         
         reset_btn = ttk.Button(manage_frame, text="Clear All Data", 
@@ -324,6 +368,7 @@ class App:
         """Setup the Testing tab"""
         # Search Section
         search_frame = ttk.LabelFrame(parent, text="Search Operations", padding=10)
+        search_frame = ttk.LabelFrame(parent, text="Search Operations", padding=10, style='Card.TLabelframe')
         search_frame.pack(fill=tk.X, pady=5)
         
         simple_search_btn = ttk.Button(search_frame, text="Search Value", style="Primary.TButton", 
@@ -333,6 +378,7 @@ class App:
         
         # Animated Simulation Section
         sim_frame = ttk.LabelFrame(parent, text="Visualization", padding=10)
+        sim_frame = ttk.LabelFrame(parent, text="Visualization", padding=10, style='Card.TLabelframe')
         sim_frame.pack(fill=tk.X, pady=10)
         
         sim_btn = ttk.Button(sim_frame, text="Simulate Lookup Process", 
@@ -344,42 +390,47 @@ class App:
         """Setup the Analysis tab"""
         # Performance Testing
         perf_frame = ttk.LabelFrame(parent, text="Performance Testing", padding=10)
+        perf_frame = ttk.LabelFrame(parent, text="Performance Testing", padding=10, style='Card.TLabelframe')
         perf_frame.pack(fill=tk.X, pady=5)
         
         # Test configuration section
         config_frame = ttk.Frame(perf_frame)
+        config_frame = ttk.Frame(perf_frame, style='Card.TFrame')
         config_frame.pack(fill=tk.X, pady=5)
         
         # Max sample size with slider
         ttk.Label(config_frame, text="Maximum Sample Size:").pack(anchor='w', pady=(0, 5))
         
         sample_frame = ttk.Frame(config_frame)
+        sample_frame = ttk.Frame(config_frame, style='Card.TFrame')
         sample_frame.pack(fill=tk.X)
         
         self.search_count = tk.StringVar(value="100")
+        self.sample_label = ttk.Label(sample_frame, text="100", width=8)
+        self.sample_label.pack(side=tk.RIGHT)
         
         sample_slider = ttk.Scale(sample_frame, from_=0, to=5, orient=tk.HORIZONTAL,
                                length=150, command=self.update_sample_size)
         sample_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
         sample_slider.set(1)  # Default to 100 (index 1)
         
-        self.sample_label = ttk.Label(sample_frame, text="100", width=8)
-        self.sample_label.pack(side=tk.RIGHT)
-        
         # Test type selection
         ttk.Label(config_frame, text="Test Type:").pack(anchor='w', pady=(10, 5))
         
         self.test_type = tk.StringVar(value="Random")
-        
+        self.style.configure('Card.TRadiobutton', background='white')
+
         test_types = [("Random", "Random lookups from your data"),
                     ("Best-case", "Always search for the first value"),
                     ("Worst-case", "Search for values that don't exist")]
         
         for test, description in test_types:
             test_frame = ttk.Frame(config_frame)
+            test_frame = ttk.Frame(config_frame, style='Card.TFrame')
             test_frame.pack(fill=tk.X, pady=2)
             
             radio = ttk.Radiobutton(test_frame, text=test, value=test, variable=self.test_type)
+            radio = ttk.Radiobutton(test_frame, text=test, value=test, variable=self.test_type, style='Card.TRadiobutton')
             radio.pack(side=tk.LEFT)
             ToolTip(radio, description)
         
@@ -473,8 +524,51 @@ class App:
         reset_view_btn.pack(side=tk.LEFT, padx=5)
         ToolTip(reset_view_btn, "Reset zoom and position")
         
-        # Set initial zoom level
-        self.bst_zoom = 1.0
+        # Add mouse wheel zoom support
+        self.canvas.bind("<MouseWheel>", self.mouse_wheel_zoom)  # Windows
+        self.canvas.bind("<Button-4>", self.mouse_wheel_zoom)    # Linux
+        self.canvas.bind("<Button-5>", self.mouse_wheel_zoom)    # Linux
+        
+        # Add drag-to-pan support
+        self.canvas.bind("<ButtonPress-1>", self.start_pan)
+        self.canvas.bind("<B1-Motion>", self.pan_canvas)
+        
+        # For tracking pan operations
+        self.pan_start_x = 0
+        self.pan_start_y = 0
+
+        # ensure all tree items get the tag “tree”
+        self.tree_tag = "tree"
+
+    def mouse_wheel_zoom(self, event):
+        """Zoom in/out with mouse wheel"""
+        # Determine zoom direction
+        if event.num == 5 or event.delta < 0:  # Zoom out
+            self.zoom_bst(0.9)
+        if event.num == 4 or event.delta > 0:  # Zoom in
+            self.zoom_bst(1.1)
+        return "break"  # Prevent default behavior
+
+    def start_pan(self, event):
+        """Start panning the canvas"""
+        self.canvas.scan_mark(event.x, event.y)
+        self.pan_start_x = event.x
+        self.pan_start_y = event.y
+
+    def pan_canvas(self, event):
+        """Pan the canvas as the mouse moves"""
+        self.canvas.scan_dragto(event.x, event.y, gain=1)
+
+    def update_depth_limit(self):
+        """Update depth limit and redraw the tree"""
+        self.depth_label.config(text=str(self.max_depth_var.get()))
+        self.draw_visuals()
+
+    def set_max_depth(self, depth):
+        """Set a specific depth limit"""
+        self.max_depth_var.set(depth)
+        self.depth_label.config(text="All" if depth == 0 else str(depth))
+        self.draw_visuals()
 
     def zoom_bst(self, factor):
         """Zoom in or out on the BST visualization"""
@@ -571,6 +665,7 @@ class App:
         
         # Create a frame inside the canvas for charts
         self.comp_inner_frame = ttk.Frame(self.comp_canvas)
+        self.comp_inner_frame = ttk.Frame(self.comp_canvas, style='TabContent.TFrame')
         self.comp_canvas.create_window((0, 0), window=self.comp_inner_frame, anchor='nw')
         
         # Placeholder message
@@ -802,6 +897,7 @@ class App:
             
             # Header with sample size and stats
             header_frame = ttk.Frame(card_frame, padding=10)
+            header_frame = ttk.Frame(card_frame, padding=10, style='Card.TFrame')
             header_frame.pack(fill=tk.X)
             
             ttk.Label(header_frame, text=f"Sample Size: {sample_size} Searches", 
@@ -812,37 +908,41 @@ class App:
             factor = max(bst_avg, ht_avg) / min(bst_avg, ht_avg) if min(bst_avg, ht_avg) > 0 else 0
             
             eff_frame = ttk.Frame(header_frame)
+            eff_frame = ttk.Frame(header_frame, style='Card.TFrame')
             eff_frame.pack(side=tk.RIGHT)
             
             ttk.Label(eff_frame, text=f"{faster} was ", font=("Segoe UI", 10)).pack(side=tk.LEFT)
-            ttk.Label(eff_frame, text=f"{factor:.1f}x", 
-                   font=("Segoe UI", 10, "bold"), 
-                   foreground=self.colors["secondary"]).pack(side=tk.LEFT)
+            ttk.Label(eff_frame, text=f"{faster} was ", font=("Segoe UI", 10), style='Card.TLabel').pack(side=tk.LEFT)
+            ttk.Label(eff_frame, text=f"{factor:.1f}x", style='Card.TLabel', font=("Segoe UI", 10, "bold"), foreground=self.colors["secondary"]).pack(side=tk.LEFT)
             ttk.Label(eff_frame, text=" faster", font=("Segoe UI", 10)).pack(side=tk.LEFT)
+            ttk.Label(eff_frame, text=" faster", font=("Segoe UI", 10), style='Card.TLabel').pack(side=tk.LEFT)
             
             # Stats in the middle
             stats_frame = ttk.Frame(card_frame, padding=(10, 0, 10, 10))
+            stats_frame = ttk.Frame(card_frame, padding=(10, 0, 10, 10), style='Card.TFrame')
             stats_frame.pack(fill=tk.X)
             
             # BST stats
             bst_stat_frame = ttk.Frame(stats_frame)
+            bst_stat_frame = ttk.Frame(stats_frame, style='Card.TFrame')
             bst_stat_frame.pack(side=tk.LEFT, padx=10)
             
-            ttk.Label(bst_stat_frame, text="BST Average:", 
-                   font=("Segoe UI", 9)).pack(anchor='w')
+            ttk.Label(bst_stat_frame, text="BST Average:",  
+                   font=("Segoe UI", 9), style='Card.TLabel').pack(anchor='w')
             ttk.Label(bst_stat_frame, text=f"{bst_avg:.8f} seconds", 
                    font=("Consolas", 9, "bold"), 
-                   foreground=self.colors["primary"]).pack(anchor='w')
+                   foreground=self.colors["primary"], style='Card.TLabel').pack(anchor='w')
             
             # HT stats
             ht_stat_frame = ttk.Frame(stats_frame)
+            ht_stat_frame = ttk.Frame(stats_frame, style='Card.TFrame')
             ht_stat_frame.pack(side=tk.LEFT, padx=10)
             
             ttk.Label(ht_stat_frame, text="Hash Table Average:", 
-                   font=("Segoe UI", 9)).pack(anchor='w')
+                   font=("Segoe UI", 9), style='Card.TLabel').pack(anchor='w')
             ttk.Label(ht_stat_frame, text=f"{ht_avg:.8f} seconds", 
                    font=("Consolas", 9, "bold"), 
-                   foreground=self.colors["primary"]).pack(anchor='w')
+                   foreground=self.colors["primary"], style='Card.TLabel').pack(anchor='w')
             
             # Create line plot for the current sample size
             fig = plt.Figure(figsize=(9, 3), dpi=100)
@@ -949,60 +1049,166 @@ class App:
         ttk.Label(summary_frame, text=complexity_text, 
                font=("Segoe UI", 9), foreground="#555555").pack(anchor='w', padx=20, pady=(0, 10))
 
+    def _compute_node_positions(self):
+        """
+        Assign each node a depth and an x-position so that
+        parents are centered over their children.
+        """
+        # 1) In-order pass to give every node a unique leaf index
+        in_index = {}
+        counter = {'x': 0}
+        def _inorder(n):
+            if not n: return
+            _inorder(n.left)
+            in_index[n] = counter['x']
+            counter['x'] += 1
+            _inorder(n.right)
+        _inorder(self.bst.root)
+
+        # 2) Post-order pass to compute final x as midpoint of children (or leaf index)
+        positions = {}
+        def _assign(n, depth=0):
+            if not n: return
+            _assign(n.left, depth+1)
+            _assign(n.right, depth+1)
+            if n.left and n.right:
+                x = (positions[n.left][0] + positions[n.right][0]) / 2
+            elif n.left:
+                x = positions[n.left][0]
+            elif n.right:
+                x = positions[n.right][0]
+            else:
+                x = in_index[n]
+            positions[n] = (x, depth)
+        _assign(self.bst.root, 0)
+        return positions
+    
     def draw_visuals(self):
-        """Draw visualizations of both data structures"""
+        """Draw visualizations of both data structures with even spacing."""
         self.canvas.delete("all")
         self.hash_canvas.delete("all")
-        
-        # Draw BST with current zoom level
-        self.draw_tree(self.bst.root, 600, 30, 250 * self.bst_zoom)
-        self.draw_hashtable()
-        
-        # Update scroll regions
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
-        # Switch to the appropriate tab if this is the first data insertion
-        if len(self.values) == 1:
-            self.viz_notebook.select(0)  # Select the BST tab
 
-    def draw_tree(self, node, x, y, offset):
-        """Draw the BST on the canvas"""
+        # Decide simple vs detailed
+        self.simple_render = len(self.values) > self.large_tree_threshold
+
+        # First compute even positions for each BST node
+        node_pos = self._compute_node_positions()
+        if node_pos:
+            # horizontal & vertical spacing
+            h_spacing = 40 * self.bst_zoom
+            v_spacing = 40 * self.bst_zoom
+            x_offset = 30    # left margin
+            y_offset = 30    # top margin
+
+            # Draw edges first
+            for node, (col, depth) in node_pos.items():
+                x, y = x_offset + col*h_spacing, y_offset + depth*v_spacing
+                for child in (node.left, node.right):
+                    if child and child in node_pos:
+                        cx, cy = node_pos[child]
+                        cx = x_offset + cx*h_spacing
+                        cy = y_offset + (depth+1)*v_spacing
+                        self.canvas.create_line(x, y, cx, cy,
+                                                fill="#666", width=1,
+                                                tags=(self.tree_tag,))
+
+            # Draw nodes and labels
+            for node, (col, depth) in node_pos.items():
+                x, y = x_offset + col*h_spacing, y_offset + depth*v_spacing
+                node_size = max(15*self.bst_zoom, 5)
+                # circle
+                self.canvas.create_oval(x-node_size, y-node_size,
+                                        x+node_size, y+node_size,
+                                        fill=self.colors["primary"], outline="",
+                                        tags=(self.tree_tag,))
+                if not self.simple_render:
+                    self.canvas.create_arc(x-node_size, y-node_size,
+                                           x+node_size, y-node_size+node_size*2,
+                                           start=45, extent=180, fill="#3b77db", outline="",
+                                           tags=(self.tree_tag,))
+                # text
+                font_size = max(int(9*self.bst_zoom), 7)
+                self.canvas.create_text(x, y, text=str(node.key),
+                                        fill="white",
+                                        font=("Segoe UI", font_size),
+                                        tags=(self.tree_tag,))
+
+        # now the hash‐table
+        self.draw_hashtable()
+        # update scroll region
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def update_bst_info_panel(self):
+        """Update the BST information panel"""
+        def count_nodes(node):
+            if not node:
+                return 0
+            return 1 + count_nodes(node.left) + count_nodes(node.right)
+        
+        total_nodes = count_nodes(self.bst.root)
+        visible_nodes = self.count_visible_nodes()
+        max_depth = self.max_depth_var.get()
+        
+        info_text = (
+            f"Total nodes: {total_nodes}\n"
+            f"Visible nodes: {visible_nodes}\n"
+            f"Depth limit: {max_depth if max_depth > 0 else 'All'}\n"
+            f"Zoom level: {self.bst_zoom:.1f}x"
+        )
+    
+        # Update your info panel with this text
+        self.bst_info_label.config(text=info_text)
+
+    def count_visible_nodes(self):
+        """Count nodes that are within the current depth limit"""
+        max_depth = self.max_depth_var.get()
+        if max_depth == 0:
+            return len(self.values)
+        
+        def count_to_depth(node, current_depth=0):
+            if not node or (max_depth > 0 and current_depth > max_depth):
+                return 0
+            return 1 + count_to_depth(node.left, current_depth+1) + count_to_depth(node.right, current_depth+1)
+    
+        return count_to_depth(self.bst.root)
+
+    def draw_tree(self, node, x, y, offset, current_depth=0):
+        """Draw the BST on the canvas; in large mode skip 3D effects."""
         if not node:
             return
-        
-        # Create custom node and edge colors
-        node_color = self.colors["primary"]
-        edge_color = "#666666"
-        
-        # Apply zoom factor to node size
-        node_size = max(15 * self.bst_zoom, 5)  # Don't let nodes get too small
-        
-        if node.left:
-            self.canvas.create_line(x, y, x - offset, y + 60, 
-                                 fill=edge_color, width=max(1.5 * self.bst_zoom, 1))
-            self.draw_tree(node.left, x - offset, y + 60, offset // 1.5)
-        
-        if node.right:
-            self.canvas.create_line(x, y, x + offset, y + 60, 
-                                 fill=edge_color, width=max(1.5 * self.bst_zoom, 1))
-            self.draw_tree(node.right, x + offset, y + 60, offset // 1.5)
-        
-        # Draw node with 3D effect
-        self.canvas.create_oval(x - node_size, y - node_size, 
-                             x + node_size, y + node_size, 
-                             fill=node_color, outline="")
-        
-        # Shadow/highlight for 3D effect
-        self.canvas.create_arc(x - node_size, y - node_size, 
-                            x + node_size, y + node_size, 
-                            start=45, extent=180, fill="#3b77db", outline="")
-        
-        # Adjust font size with zoom
-        font_size = max(int(9 * self.bst_zoom), 7)  # Don't let text get too small
-        
-        self.canvas.create_text(x, y, text=str(node.key), 
-                             fill="white", font=("Segoe UI", font_size))
+        max_depth = self.max_depth_var.get()
+        if max_depth and current_depth>max_depth:
+            self.canvas.create_text(x, y+20, text="…", font=("Segoe UI",14,"bold"), fill="#666")
+            return
 
+        # draw edges
+        if node.left:
+            self.canvas.create_line(x, y, x-offset, y+60,
+                fill="#666", width=1, tags=(self.tree_tag,))
+            self.draw_tree(node.left, x-offset, y+60, offset/1.5, current_depth+1)
+        if node.right:
+            self.canvas.create_line(x, y, x+offset, y+60,
+                fill="#666", width=1, tags=(self.tree_tag,))
+            self.draw_tree(node.right, x+offset, y+60, offset/1.5, current_depth+1)
+
+        # draw node
+        node_size = max(15*self.bst_zoom, 5)
+        self.canvas.create_oval(x-node_size, y-node_size,
+            x+node_size, y+node_size,
+            fill=self.colors["primary"], outline="",
+            tags=(self.tree_tag,))
+        if not self.simple_render:
+            self.canvas.create_arc(x-node_size, y-node_size,
+                x+node_size, y+node_size,
+                start=45, extent=180, fill="#3b77db", outline="",
+                tags=(self.tree_tag,))
+
+        # draw key
+        font_size = max(int(9*self.bst_zoom),7)
+        self.canvas.create_text(x, y, text=str(node.key),
+            fill="white", font=("Segoe UI", font_size),
+            tags=(self.tree_tag,))
+        
     def draw_hashtable(self):
         """Draw the hash table visualization"""
         self.hash_canvas.delete("all")
@@ -1195,31 +1401,36 @@ class App:
         if not self.values:
             messagebox.showwarning("No Data", "Insert values first to run a simulation.")
             return
-        
+
         try:
             val = int(self.entry.get())
         except ValueError:
             messagebox.showerror("Invalid Input", "Please enter an integer to search for.")
             return
-        
+
         # Create simulation window with modern styling
         sim_window = tk.Toplevel(self.root)
         sim_window.title("Lookup Simulation")
         sim_window.geometry("1200x700")
         sim_window.configure(bg=self.colors["light_bg"])
-        
-        # Setup window styling
-        ttk.Label(sim_window, text="Data Structure Lookup Simulation", 
-                style="Title.TLabel").pack(pady=10)
-        
-        # Create tabs for BST and Hash Table simulations
+
+        # --- NEW: use grid and center everything ---
+        sim_window.columnconfigure(0, weight=1)
+        sim_window.rowconfigure(1, weight=1)
+
+        # Title
+        ttk.Label(sim_window, text="Data Structure Lookup Simulation",
+                  style="Title.TLabel") \
+            .grid(row=0, column=0, pady=10)
+
+        # Notebook (will expand)
         sim_notebook = ttk.Notebook(sim_window)
-        sim_notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=(0, 10))
-        
+        sim_notebook.grid(row=1, column=0, sticky="nsew", padx=10, pady=(0,10))
+
         # BST simulation tab
         bst_frame = ttk.Frame(sim_notebook, padding=10)
         sim_notebook.add(bst_frame, text="BST Lookup Simulation")
-        
+
         # Hash Table simulation tab
         hash_frame = ttk.Frame(sim_notebook, padding=10)
         sim_notebook.add(hash_frame, text="Hash Table Lookup Simulation")
@@ -1262,14 +1473,16 @@ class App:
         
         # Controls frame
         control_frame = ttk.Frame(sim_window, padding=10, style="Card.TFrame")
-        control_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=10, pady=5)
+        control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
         
         # Value being searched display
-        ttk.Label(control_frame, text=f"Searching for value: ", 
-                font=("Segoe UI", 11)).pack(side=tk.LEFT, padx=(10, 0))
-        ttk.Label(control_frame, text=f"{val}", 
-                font=("Segoe UI", 11, "bold"), 
-               foreground=self.colors["primary"]).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Label(control_frame, text="Searching for value: ",
+                  font=("Segoe UI", 11)) \
+            .pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(control_frame, text=f"{val}",
+                  font=("Segoe UI", 11, "bold"),
+                  foreground=self.colors["primary"]) \
+            .pack(side=tk.LEFT, padx=(0, 10))
         
         # Speed control with modern slider
         ttk.Label(control_frame, text="Animation Speed:", 
@@ -1337,17 +1550,16 @@ class App:
         canvas.create_text(400, 30, text="Binary Search Tree Lookup Simulation", 
                         font=("Segoe UI", 14, "bold"), fill=self.colors["text"])
         
-        # Add legend
-        legend_frame = canvas.create_rectangle(550, 10, 780, 50, fill="#f8f9fa", outline="#dadce0")
-        canvas.create_oval(570, 20, 590, 40, fill=self.colors["primary"], outline="")
-        canvas.create_text(610, 30, text="Node", anchor="w", font=("Segoe UI", 9))
-        
-        canvas.create_oval(650, 20, 670, 40, fill="#ff9800", outline="")
-        canvas.create_text(690, 30, text="Current Node", anchor="w", font=("Segoe UI", 9))
+        # Move legend below the title to prevent overlap
+        legend_frame = canvas.create_rectangle(300, 60, 530, 100, fill="#f8f9fa", outline="#dadce0")
+        canvas.create_oval(320, 70, 340, 90, fill=self.colors["primary"], outline="")
+        canvas.create_text(360, 80, text="Node", anchor="w", font=("Segoe UI", 9))
+        canvas.create_oval(400, 70, 420, 90, fill="#ff9800", outline="")
+        canvas.create_text(440, 80, text="Current Node", anchor="w", font=("Segoe UI", 9))
         
         # Draw the tree
         tree_height = self.get_tree_height(self.bst.root)
-        self.animate_draw_tree(canvas, self.bst.root, 400, 100, 200)
+        self.animate_draw_tree(canvas, self.bst.root, 400, 130, 200)
         
         # Update scroll region to fit the tree
         # Approximate the required size based on tree height
