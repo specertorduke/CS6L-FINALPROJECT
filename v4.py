@@ -5,6 +5,7 @@ import time
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from tkinter import font as tkfont
+from tkinter import filedialog
 
 # BST Implementation
 class BSTNode:
@@ -186,6 +187,14 @@ class App:
         # Add a status bar
         self.setup_status_bar()
     
+    def save_chart(self, fig):
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG Image", "*.png"), ("All Files", "*.*")]
+        )
+        if file_path:
+            fig.savefig(file_path)
+
     def setup_styles(self):
         """Configure ttk styles for a modern look"""
         self.style = ttk.Style()
@@ -281,9 +290,40 @@ class App:
         self.main_paned = ttk.PanedWindow(main_container, orient=tk.HORIZONTAL)
         self.main_paned.pack(fill=tk.BOTH, expand=True)
         
-        # Left panel - Control Center
-        self.control_panel = ttk.Frame(self.main_paned, style='Card.TFrame', padding=10)
-        self.main_paned.add(self.control_panel, weight=30)
+        # --- LEFT PANEL: Make it scrollable ---
+        left_panel = ttk.Frame(self.main_paned)
+        left_panel.pack(fill=tk.BOTH, expand=True)
+        left_panel.pack_propagate(False)
+        self.main_paned.add(left_panel, weight=30)
+
+        # Create canvas and scrollbar with left_panel as parent
+        control_canvas = tk.Canvas(left_panel, highlightthickness=0, bg=self.colors["light_bg"])
+        control_scrollbar = ttk.Scrollbar(left_panel, orient="vertical", command=control_canvas.yview)
+        control_canvas.configure(yscrollcommand=control_scrollbar.set)
+
+        # Create a frame inside the canvas
+        self.control_panel = ttk.Frame(control_canvas, style='Card.TFrame', padding=10)
+        self.control_panel.pack(fill=tk.BOTH, expand=True)
+        control_panel_window = control_canvas.create_window((0, 0), window=self.control_panel, anchor="nw")
+
+        def _on_canvas_configure(event):
+            control_canvas.itemconfig(control_panel_window, width=event.width)
+        control_canvas.bind("<Configure>", _on_canvas_configure)
+
+        # Pack canvas and scrollbar inside left_panel
+        control_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        control_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Bind resizing and mousewheel
+        def _on_frame_configure(event):
+            control_canvas.configure(scrollregion=control_canvas.bbox("all"))
+        self.control_panel.bind("<Configure>", _on_frame_configure)
+
+        def _on_mousewheel(event):
+            control_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        control_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        # --- END SCROLLABLE LEFT PANEL ---
         
         # Right panel - Visualization area
         viz_panel = ttk.Frame(self.main_paned, style='Card.TFrame')
@@ -348,8 +388,8 @@ class App:
         ttk.Label(input_frame, text="Value:").pack(side=tk.LEFT, padx=(0, 5))
         self.style.configure('Clean.TEntry', borderwidth=1)
         self.style.map('Clean.TEntry', fieldbackground=[('!disabled', 'white')])
-        self.entry = ttk.Entry(input_frame, width=10, style='Clean.TEntry')
-        self.entry.pack(side=tk.LEFT, padx=(0, 5))
+        self.insert_entry = ttk.Entry(input_frame, width=10, style='Clean.TEntry')
+        self.insert_entry.pack(side=tk.LEFT, padx=(0, 5))
         
         button_frame = ttk.Frame(manual_frame)
         button_frame.pack(fill=tk.X, pady=5)
@@ -396,6 +436,13 @@ class App:
         search_frame = ttk.LabelFrame(parent, text="Search Operations", padding=10, style='Card.TLabelframe')
         search_frame.pack(fill=tk.X, pady=5)
         
+        input_frame = ttk.Frame(search_frame, style='Card.TFrame')
+        input_frame.pack(fill=tk.X, pady=5)
+
+        ttk.Label(input_frame, text="Value:").pack(side=tk.LEFT, padx=(0, 5))
+        self.test_entry = ttk.Entry(input_frame, width=10, style='Clean.TEntry')
+        self.test_entry.pack(side=tk.LEFT, padx=(0, 5))
+
         simple_search_btn = ttk.Button(search_frame, text="Search Value", style="Primary.TButton", 
                                     command=self.search_value)
         simple_search_btn.pack(fill=tk.X, pady=2)
@@ -660,6 +707,12 @@ class App:
                             font=("Segoe UI", 9, "italic"))
         info_label.pack(side=tk.BOTTOM, anchor='w', padx=5, pady=5)
 
+        def _on_mousewheel(event):
+            self.hash_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        self.hash_canvas.bind("<MouseWheel>", _on_mousewheel)  # Windows
+        self.hash_canvas.bind("<Button-4>", lambda e: self.hash_canvas.yview_scroll(-1, "units"))  # Linux scroll up
+        self.hash_canvas.bind("<Button-5>", lambda e: self.hash_canvas.yview_scroll(1, "units"))   # Linux scroll down
+
     def setup_comparison_visualization(self, parent):
         """Setup the Performance Comparison tab"""
         # Info panel at the top
@@ -719,11 +772,11 @@ class App:
     def insert_value(self):
         """Insert a single value from the entry field"""
         try:
-            val = int(self.entry.get())
+            val = int(self.insert_entry.get())
             self.values.append(val)
             self.bst.insert(val)
             self.ht.insert(val)
-            self.entry.delete(0, tk.END)
+            self.insert_entry.delete(0, tk.END)
             self.update_stats()
             self.draw_visuals()
             self.update_status(f"Inserted value: {val}")
@@ -746,7 +799,7 @@ class App:
     def search_value(self):
         """Search for a value and compare performance"""
         try:
-            val = int(self.entry.get())
+            val = int(self.test_entry.get())
             
             self.update_status(f"Searching for value: {val}...")
             
@@ -764,6 +817,8 @@ class App:
             result_dialog.geometry("400x250")
             result_dialog.transient(self.root)
             result_dialog.grab_set()
+            
+            self.test_entry.delete(0, tk.END)
             
             # Style the dialog
             result_frame = ttk.Frame(result_dialog, padding=20)
@@ -972,7 +1027,11 @@ class App:
             ax = fig.add_subplot(111)
             chart = FigureCanvasTkAgg(fig, card_frame)
             chart.get_tk_widget().pack(padx=10, pady=5, fill=tk.X)
-            
+
+            save_btn = ttk.Button(card_frame, text="Save Chart", style="Action.TButton",
+                      command=lambda fig=fig: self.save_chart(fig))
+            save_btn.pack(padx=10, pady=(0, 10), anchor="e")
+
             # Customize the plot appearance
             ax.plot(bst_times, label='BST', marker='o', markersize=3, 
                  color=self.colors["primary"], alpha=0.8, linewidth=1)
@@ -1019,6 +1078,10 @@ class App:
         chart = FigureCanvasTkAgg(fig, summary_frame)
         chart.get_tk_widget().pack(padx=20, pady=10, fill=tk.BOTH)
         
+        save_btn = ttk.Button(card_frame, text="Save Chart", style="Action.TButton",
+                      command=lambda fig=fig: self.save_chart(fig))
+        save_btn.pack(padx=20, pady=(0, 10), anchor="e")
+
         # Plot the data with nicer styling
         width = 0.35
         x = range(len(sample_sizes))
@@ -1341,7 +1404,7 @@ class App:
             return
 
         try:
-            val = int(self.entry.get())
+            val = int(self.test_entry.get())
         except ValueError:
             messagebox.showerror("Invalid Input", "Please enter an integer to search for.")
             return
@@ -1409,6 +1472,12 @@ class App:
                            xscrollcommand=hash_x_scrollbar.set,
                            scrollregion=(0, 0, 800, 600))
         
+        def _on_hash_mousewheel(event):
+            hash_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        hash_canvas.bind("<MouseWheel>", _on_hash_mousewheel)  # Windows
+        hash_canvas.bind("<Button-4>", lambda e: hash_canvas.yview_scroll(-1, "units"))  # Linux scroll up
+        hash_canvas.bind("<Button-5>", lambda e: hash_canvas.yview_scroll(1, "units"))   # Linux scroll down
+
         # Controls frame
         control_frame = ttk.Frame(sim_window, padding=10, style="Card.TFrame")
         control_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
