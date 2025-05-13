@@ -72,22 +72,47 @@ class BST:
 class HashTable:
     def __init__(self, size=100):
         self.size = size
-        self.table = [[] for _ in range(size)]
+        self.table = [None for _ in range(size)]
 
     def _hash(self, key):
         return key % self.size
 
     def insert(self, key):
-        h = self._hash(key)
-        if key not in self.table[h]:
-            self.table[h].append(key)
+        for _ in range(2):  # Try twice: before and after resizing
+            h = self._hash(key)
+            for i in range(self.size):
+                idx = (h + i) % self.size
+                if self.table[idx] is None or self.table[idx] == key:
+                    self.table[idx] = key
+                    return
+            self._resize()
+        raise Exception("Hash table is full")
+
+    def _resize(self):
+        old_table = self.table
+        self.size *= 2
+        self.table = [None for _ in range(self.size)]
+        for val in old_table:
+            if val is not None:
+                h = self._hash(val)
+                for i in range(self.size):
+                    idx = (h + i) % self.size
+                    if self.table[idx] is None:
+                        self.table[idx] = val
+                        break
 
     def search(self, key):
         h = self._hash(key)
-        return key in self.table[h]
+        for i in range(self.size):
+            idx = (h + i) % self.size
+            if self.table[idx] is None:
+                return False
+            if self.table[idx] == key:
+                return True
+        return False
 
     def clear(self):
-        self.table = [[] for _ in range(self.size)]
+        self.table = [None for _ in range(self.size)]
 
 # Create a tooltip class
 class ToolTip:
@@ -1210,148 +1235,63 @@ class App:
             tags=(self.tree_tag,))
         
     def draw_hashtable(self):
-        """Draw the hash table visualization"""
         self.hash_canvas.delete("all")
-        
-        # Improved hash table styling
-        table_width = 550
         row_height = 40
         header_height = 50
-        
-        # Draw title and explanation
+
+        font_bucket = tkfont.Font(family="Segoe UI", size=10)
+        min_table_width = 550
+        max_text_width = 0
+        visible_buckets = self.ht.size
+
+        # Find the widest bucket contents
+        for i in range(visible_buckets):
+            bucket = self.ht.table[i]
+            items_text = str(bucket) if bucket is not None else "(empty)"
+            text_width = font_bucket.measure(items_text)
+            max_text_width = max(max_text_width, text_width)
+
+        table_width = max(min_table_width, 160 + max_text_width + 30)
+
         self.hash_canvas.create_text(50 + table_width/2, 20, 
-                                  text="Hash Table Visualization", 
-                                  fill=self.colors["text"], 
-                                  font=("Segoe UI", 14, "bold"))
-        
-        # Draw table header
+            text="Hash Table Visualization", 
+            fill=self.colors["text"], 
+            font=("Segoe UI", 14, "bold"))
+
         self.hash_canvas.create_rectangle(50, 50, 50 + table_width, 50 + header_height, 
-                                       fill=self.colors["primary"], outline="")
-        
-        # Header columns
+            fill=self.colors["primary"], outline="")
+
         self.hash_canvas.create_line(150, 50, 150, 50 + header_height, 
-                                  fill="white", width=2)
-        
-        # Header text
+            fill="white", width=2)
+
         self.hash_canvas.create_text(100, 50 + header_height/2, 
-                                  text="Index", fill="white", 
-                                  font=("Segoe UI", 12, "bold"))
+            text="Index", fill="white", font=("Segoe UI", 12, "bold"))
         self.hash_canvas.create_text(150 + (table_width-150)/2, 50 + header_height/2, 
-                                  text="Values (Collision Chain)", fill="white", 
-                                  font=("Segoe UI", 12, "bold"))
-        
-        # Show a subset of buckets (first 50)
-        visible_buckets = min(50, self.ht.size)
-        
-        # Count non-empty buckets for visualization
-        non_empty = sum(1 for bucket in self.ht.table[:visible_buckets] if bucket)
-        
-        if non_empty > 0:
-            # Show all non-empty buckets and some empty ones
-            min_empty_to_show = min(10, visible_buckets - non_empty)
-            
-            # First show non-empty buckets
-            row = 0
-            y_start = 50 + header_height
-            
-            for i in range(visible_buckets):
-                bucket = self.ht.table[i]
-                if bucket:  # Non-empty bucket
-                    y_pos = y_start + row * row_height
-                    
-                    # Alternating row colors
-                    bg_color = "#f8f8f8" if row % 2 == 0 else "white"
-                    
-                    # Draw row background
-                    self.hash_canvas.create_rectangle(50, y_pos, 
-                                                   50 + table_width, 
-                                                   y_pos + row_height, 
-                                                   fill=bg_color, outline="#e0e0e0")
-                    
-                    # Draw index column
-                    self.hash_canvas.create_rectangle(50, y_pos, 
-                                                   150, y_pos + row_height, 
-                                                   fill="#e6e6e6", outline="#d0d0d0")
-                    self.hash_canvas.create_text(100, y_pos + row_height/2, 
-                                              text=str(i), 
-                                              font=("Consolas", 11, "bold"))
-                    
-                    # Format values in the bucket
-                    if len(bucket) > 10:
-                        # Show first 10 values with ellipsis
-                        items_text = ", ".join(map(str, bucket[:10])) + f", ... (+{len(bucket) - 10} more)"
-                    else:
-                        items_text = ", ".join(map(str, bucket))
-                    
-                    # Draw bucket contents with overflow handling
-                    self.hash_canvas.create_text(160, y_pos + row_height/2, 
-                                              text=items_text, anchor="w", width=table_width-160-10,
-                                              font=("Segoe UI", 10))
-                    
-                    row += 1
-            
-            # Now show some empty buckets
-            empty_shown = 0
-            for i in range(visible_buckets):
-                bucket = self.ht.table[i]
-                if not bucket and empty_shown < min_empty_to_show:  # Empty bucket
-                    y_pos = y_start + row * row_height
-                    
-                    # Alternating row colors (lighter for empty)
-                    bg_color = "#f9f9f9" if row % 2 == 0 else "white"
-                    
-                    # Draw row background
-                    self.hash_canvas.create_rectangle(50, y_pos, 
-                                                   50 + table_width, 
-                                                   y_pos + row_height, 
-                                                   fill=bg_color, outline="#e8e8e8")
-                    
-                    # Draw index column
-                    self.hash_canvas.create_rectangle(50, y_pos, 
-                                                   150, y_pos + row_height, 
-                                                   fill="#f0f0f0", outline="#e0e0e0")
-                    self.hash_canvas.create_text(100, y_pos + row_height/2, 
-                                              text=str(i), 
-                                              font=("Consolas", 11))
-                    
-                    # Draw empty notation
-                    self.hash_canvas.create_text(160, y_pos + row_height/2, 
-                                              text="(empty)", anchor="w", 
-                                              font=("Segoe UI", 10, "italic"), 
-                                              fill="#999999")
-                    
-                    row += 1
-                    empty_shown += 1
-            
-            # Update stats
-            total_height = y_start + row * row_height + 50
-            
-            # Draw hash table statistics
-            stats_y = y_start + row * row_height + 20
-            
-            self.hash_canvas.create_text(50, stats_y, 
-                                      text=f"Total buckets: {self.ht.size}", 
-                                      anchor="w", font=("Segoe UI", 10))
-            self.hash_canvas.create_text(50, stats_y + 20, 
-                                      text=f"Non-empty buckets: {non_empty} ({non_empty/self.ht.size*100:.1f}%)", 
-                                      anchor="w", font=("Segoe UI", 10))
-            
-            load_factor = len(self.values) / self.ht.size
-            self.hash_canvas.create_text(350, stats_y, 
-                                      text=f"Load factor: {load_factor:.2f}", 
-                                      anchor="w", font=("Segoe UI", 10))
-            self.hash_canvas.create_text(350, stats_y + 20, 
-                                      text=f"Longest chain: {max(len(b) for b in self.ht.table)}", 
-                                      anchor="w", font=("Segoe UI", 10))
-            
-            # Update the canvas scroll region
-            self.hash_canvas.configure(scrollregion=(0, 0, table_width + 100, total_height))
-        else:
-            # No data - show empty state
-            self.hash_canvas.create_text(50 + table_width/2, 150, 
-                                      text="Hash table is empty. Add data to visualize.", 
-                                      fill="#999999", font=("Segoe UI", 12, "italic"))
-            self.hash_canvas.configure(scrollregion=(0, 0, table_width + 100, 200))
+            text="Value", fill="white", font=("Segoe UI", 12, "bold"))
+
+        non_empty = sum(1 for bucket in self.ht.table[:visible_buckets] if bucket is not None)
+
+        row = 0
+        y_start = 50 + header_height
+
+        for i in range(visible_buckets):
+            bucket = self.ht.table[i]
+            y_pos = y_start + row * row_height
+            bg_color = "#f8f8f8" if row % 2 == 0 else "white"
+            self.hash_canvas.create_rectangle(50, y_pos, 50 + table_width, y_pos + row_height, fill=bg_color, outline="#e0e0e0")
+            self.hash_canvas.create_rectangle(50, y_pos, 150, y_pos + row_height, fill="#e6e6e6", outline="#d0d0d0")
+            self.hash_canvas.create_text(100, y_pos + row_height/2, text=str(i), font=("Consolas", 11, "bold"))
+            items_text = str(bucket) if bucket is not None else "(empty)"
+            self.hash_canvas.create_text(160, y_pos + row_height/2, text=items_text, anchor="w", font=("Segoe UI", 10), tags=f"items_{i}")
+            row += 1
+
+        total_height = y_start + row * row_height + 50
+        stats_y = y_start + row * row_height + 20
+        self.hash_canvas.create_text(50, stats_y, text=f"Total buckets: {self.ht.size}", anchor="w", font=("Segoe UI", 10))
+        self.hash_canvas.create_text(50, stats_y + 20, text=f"Non-empty buckets: {non_empty} ({non_empty/self.ht.size*100:.1f}%)", anchor="w", font=("Segoe UI", 10))
+        load_factor = len([v for v in self.ht.table if v is not None]) / self.ht.size
+        self.hash_canvas.create_text(350, stats_y, text=f"Load factor: {load_factor:.2f}", anchor="w", font=("Segoe UI", 10))
+        self.hash_canvas.configure(scrollregion=(0, 0, table_width + 100, total_height))
 
     def update_stats(self):
         """Update statistics display"""
@@ -1520,6 +1460,28 @@ class App:
         
         self.update_status(f"Opened simulation window for value: {val}")
 
+        # Add zoom controls for simulation BST canvas
+        sim_zoom_frame = ttk.Frame(bst_frame)
+        sim_zoom_frame.pack(side=tk.BOTTOM, anchor='e', padx=5, pady=5)
+
+        # Store zoom level for simulation
+        self.sim_bst_zoom = 1.0
+
+        def sim_zoom(factor):
+            self.sim_bst_zoom *= factor
+            self.draw_bst_for_animation(bst_canvas)
+
+        zoom_in_btn = ttk.Button(sim_zoom_frame, text="➕", width=3, command=lambda: sim_zoom(1.2))
+        zoom_in_btn.pack(side=tk.LEFT, padx=2)
+        zoom_out_btn = ttk.Button(sim_zoom_frame, text="➖", width=3, command=lambda: sim_zoom(0.8))
+        zoom_out_btn.pack(side=tk.LEFT, padx=2)
+        reset_btn = ttk.Button(sim_zoom_frame, text="Reset", command=lambda: [setattr(self, 'sim_bst_zoom', 1.0), self.draw_bst_for_animation(bst_canvas)])
+        reset_btn.pack(side=tk.LEFT, padx=2)
+
+        bst_canvas.bind("<MouseWheel>", lambda e: sim_zoom(1.1 if e.delta > 0 else 0.9))
+        bst_canvas.bind("<Button-4>", lambda e: sim_zoom(1.1))  # Linux scroll up
+        bst_canvas.bind("<Button-5>", lambda e: sim_zoom(0.9))  # Linux scroll down
+
     def animate_draw_tree(self, canvas, node, x, y, offset):
         """Draw the BST nodes for animation with tags for identification"""
         if not node:
@@ -1558,14 +1520,40 @@ class App:
         canvas.create_text(440, 80, text="Current Node", anchor="w", font=("Segoe UI", 9))
         
         # Draw the tree
-        tree_height = self.get_tree_height(self.bst.root)
-        self.animate_draw_tree(canvas, self.bst.root, 400, 130, 200)
-        
+        node_pos = self._compute_node_positions()
+        self.sim_bst_node_pos = node_pos
+        if node_pos:
+            # Dynamic horizontal spacing to fit canvas
+            x_offset = 50
+            y_offset = 130
+            max_col = max(col for col, _ in node_pos.values())
+            canvas_w = canvas.winfo_width() or 800
+            h_spacing = ((canvas_w - 2 * x_offset) / (max_col + 1)) * getattr(self, 'sim_bst_zoom', 1.0)
+            h_spacing = max(h_spacing, 30)
+            v_spacing = 80 * getattr(self, 'sim_bst_zoom', 1.0)
+
+            # Draw edges
+            for node, (col, depth) in node_pos.items():
+                x, y = x_offset + col * h_spacing, y_offset + depth * v_spacing
+                for child in (node.left, node.right):
+                    if child and child in node_pos:
+                        cx, cy = node_pos[child]
+                        cx = x_offset + cx * h_spacing
+                        cy = y_offset + (depth + 1) * v_spacing
+                        canvas.create_line(x, y, cx, cy, fill="#666666", width=1.5, tags=f"edge_{'left' if child==node.left else 'right'}_{node.key}")
+
+            # Draw nodes and labels
+            for node, (col, depth) in node_pos.items():
+                x, y = x_offset + col * h_spacing, y_offset + depth * v_spacing
+                node_size = 20
+                canvas.create_oval(x - node_size, y - node_size, x + node_size, y + node_size,
+                                   fill=self.colors["primary"], outline="", tags=f"node_{node.key}")
+                canvas.create_arc(x - node_size, y - node_size, x + node_size, y + node_size,
+                                  start=45, extent=180, fill="#3b77db", outline="", tags=f"arc_{node.key}")
+                canvas.create_text(x, y, text=str(node.key), fill="white", font=("Segoe UI", 10), tags=f"text_{node.key}")
+
         # Update scroll region to fit the tree
-        # Approximate the required size based on tree height
-        width = max(800, 400 + 2**(tree_height-1) * 40)  # Width expands exponentially with height
-        height = max(600, 100 + tree_height * 120)       # Height grows linearly with tree height
-        canvas.configure(scrollregion=(0, 0, width, height))
+        canvas.configure(scrollregion=canvas.bbox("all"))
 
     def get_tree_height(self, node):
         if not node:
@@ -1573,64 +1561,43 @@ class App:
         return max(self.get_tree_height(node.left), self.get_tree_height(node.right)) + 1
 
     def draw_hashtable_for_animation(self, canvas):
-        """Draw the hash table in its initial state for animation"""
         canvas.delete("all")
-        canvas.create_text(400, 30, text="Hash Table Lookup Simulation", 
-                        font=("Segoe UI", 14, "bold"), fill=self.colors["text"])
-        
-        # Add legend
-        legend_frame = canvas.create_rectangle(550, 10, 780, 50, fill="#f8f9fa", outline="#dadce0")
-        canvas.create_rectangle(570, 20, 590, 40, fill="#ffe0b2", outline="#ffcc80")
-        canvas.create_text(610, 30, text="Current Bucket", anchor="w", font=("Segoe UI", 9))
-        
-        # Draw table background
-        table_width = 700
         row_height = 40
         table_x = 50
         table_y = 100
-        
-        # Header
-        canvas.create_rectangle(table_x, table_y, table_x + table_width, table_y + row_height,
-                             fill=self.colors["primary"], outline="")
-        canvas.create_text(table_x + table_width/2, table_y + row_height/2,
-                        text="Hash Table Buckets", fill="white", font=("Segoe UI", 12, "bold"))
-        
-        # Show more buckets - increase from 15 to 30
-        visible_buckets = min(30, self.ht.size)
-        
-        # Calculate total height including space for results
-        total_height = table_y + (visible_buckets + 1) * row_height + 300
-        
+        font_bucket = tkfont.Font(family="Segoe UI", size=10)
+        min_table_width = 700
+        max_text_width = 0
+        visible_buckets = self.ht.size
+
+        for i in range(visible_buckets):
+            bucket = self.ht.table[i]
+            items_text = str(bucket) if bucket is not None else "(empty)"
+            text_width = font_bucket.measure(items_text)
+            max_text_width = max(max_text_width, text_width)
+
+        table_width = max(min_table_width, 70 + max_text_width + 80)
+
+        canvas.create_text(400, 30, text="Hash Table Lookup Simulation", font=("Segoe UI", 14, "bold"), fill=self.colors["text"])
+        legend_frame = canvas.create_rectangle(550, 10, 780, 50, fill="#f8f9fa", outline="#dadce0")
+        canvas.create_rectangle(570, 20, 590, 40, fill="#ffe0b2", outline="#ffcc80")
+        canvas.create_text(610, 30, text="Current Bucket", anchor="w", font=("Segoe UI", 9))
+
+        canvas.create_rectangle(table_x, table_y, table_x + table_width, table_y + row_height, fill=self.colors["primary"], outline="")
+        canvas.create_text(table_x + table_width/2, table_y + row_height/2, text="Hash Table Buckets", fill="white", font=("Segoe UI", 12, "bold"))
+
         for i in range(visible_buckets):
             y_pos = table_y + (i+1) * row_height
             bucket = self.ht.table[i]
-            
-            # Alternating colors
             bg_color = "#f0f0f0" if i % 2 == 0 else "#ffffff"
-            
-            # Draw row
-            canvas.create_rectangle(table_x, y_pos, table_x + table_width, y_pos + row_height,
-                                 fill=bg_color, outline="#dddddd", tags=f"bucket_{i}")
-            
-            # Draw index column
-            canvas.create_rectangle(table_x, y_pos, table_x + 50, y_pos + row_height,
-                                 fill="#e6e6e6", outline="#dddddd")
-            canvas.create_text(table_x + 25, y_pos + row_height/2, text=str(i),
-                            font=("Segoe UI", 10), tags=f"index_{i}")
-            
-            # Draw bucket contents - show more items (20 instead of 15)
-            items_text = ", ".join(map(str, bucket[:20]))
-            if len(bucket) > 20:
-                items_text += f", ... (+{len(bucket) - 20} more)"
-            
-            if not bucket:
-                items_text = "(empty)"
-                
-            canvas.create_text(table_x + 70, y_pos + row_height/2, text=items_text,
-                            anchor="w", font=("Segoe UI", 10), tags=f"items_{i}")
-        
-        # Set a larger scroll region to ensure all content is visible
-        canvas.configure(scrollregion=(0, 0, table_width + 200, total_height))
+            canvas.create_rectangle(table_x, y_pos, table_x + table_width, y_pos + row_height, fill=bg_color, outline="#dddddd", tags=f"bucket_{i}")
+            canvas.create_rectangle(table_x, y_pos, table_x + 50, y_pos + row_height, fill="#e6e6e6", outline="#dddddd")
+            canvas.create_text(table_x + 25, y_pos + row_height/2, text=str(i), font=("Segoe UI", 10), tags=f"index_{i}")
+            items_text = str(bucket) if bucket is not None else "(empty)"
+            canvas.create_text(table_x + 70, y_pos + row_height/2, text=items_text, anchor="w", font=("Segoe UI", 10), tags=f"items_{i}")
+
+        total_height = table_y + (visible_buckets + 1) * row_height + 300
+        canvas.configure(scrollregion=(0, 0, table_x + table_width + 100, total_height))
     
     def start_simulation(self, key, bst_canvas, hash_canvas, speed_var):
         """Start the animation for both BST and hash table lookups"""
@@ -1646,169 +1613,243 @@ class App:
         self.root.after(500, lambda: self.animate_hash_search(key, hash_canvas, delay))
     
     def animate_bst_search(self, key, canvas, node, delay, path=None):
-        """Animate the BST search process"""
         if path is None:
             path = []
-        
+
         if not node:
-            # Search unsuccessful
             self.show_bst_result(canvas, key, False, path, delay)
             return
-        
+
+        node_x, node_y = None, None
+        if hasattr(self, "sim_bst_node_pos") and node in self.sim_bst_node_pos:
+            col, depth = self.sim_bst_node_pos[node]
+            x_offset = 50
+            y_offset = 130
+            canvas.update_idletasks()
+            max_col = max(c for c, _ in self.sim_bst_node_pos.values())
+            canvas_w = canvas.winfo_width() or 800
+            canvas_h = canvas.winfo_height() or 600
+            h_spacing = ((canvas_w - 2 * x_offset) / (max_col + 1))
+            h_spacing = max(h_spacing, 30)
+            v_spacing = 80
+            node_x = x_offset + col * h_spacing
+            node_y = y_offset + depth * v_spacing
+
+            bbox = canvas.bbox("all")
+            if bbox and node_x is not None and node_y is not None:
+                total_w = bbox[2] - bbox[0]
+                total_h = bbox[3] - bbox[1]
+                # Clamp so we don't scroll out of bounds
+                target_x = max(bbox[0] + canvas_w // 2, min(node_x, bbox[2] - canvas_w // 2))
+                target_y = max(bbox[1] + canvas_h // 2, min(node_y, bbox[3] - canvas_h // 2))
+                x_frac = (target_x - bbox[0] - canvas_w // 2) / max(1, total_w - canvas_w)
+                y_frac = (target_y - bbox[1] - canvas_h // 2) / max(1, total_h - canvas_h)
+                x_frac = min(max(x_frac, 0), 1)
+                y_frac = min(max(y_frac, 0), 1)
+                canvas.xview_moveto(x_frac)
+                canvas.yview_moveto(y_frac)
+
         # Highlight current node being examined
         canvas.itemconfig(f"node_{node.key}", fill="#ff9800")
         canvas.itemconfig(f"arc_{node.key}", fill="#f57c00")
-        
+
         # Add step to search path
         path.append(node.key)
-        
-        # Create comparison text
+
+        # --- Place comparison card at bottom center of visible area ---
+        canvas.delete("compare_text_card")
+        canvas.update_idletasks()
+        bbox = canvas.bbox("all")
+        canvas_w = canvas.winfo_width() or 800
+        canvas_h = canvas.winfo_height() or 600
+        x0 = canvas.canvasx(0)
+        y0 = canvas.canvasy(0)
+        x1 = x0 + canvas_w
+        y1 = y0 + canvas_h
+
+        card_width = 340
+        card_height = 60
+        card_x = (x0 + x1) / 2
+        card_y = y1 - card_height / 2 - 10  # 10px margin from bottom
+
         compare_text = f"Comparing {key} with {node.key}"
-        text_id = canvas.create_text(400, 60, text=compare_text, 
-                                  font=("Segoe UI", 11), fill=self.colors["text"])
-        
-        if key == node.key:
-            # Found the key
-            self.root.after(delay, lambda: canvas.itemconfig(f"node_{node.key}", fill=self.colors["secondary"]))
-            self.root.after(delay, lambda: canvas.itemconfig(f"arc_{node.key}", fill="#2d9748"))
-            self.root.after(delay, lambda: self.show_bst_result(canvas, key, True, path, delay))
-        elif key < node.key:
-            # Go left
-            self.root.after(delay, lambda: canvas.delete(text_id))
-            self.root.after(delay, lambda: canvas.itemconfig(f"node_{node.key}", fill=self.colors["primary"]))
-            self.root.after(delay, lambda: canvas.itemconfig(f"arc_{node.key}", fill="#3b77db"))
-            
-            if node.left:
-                self.root.after(delay, lambda: canvas.itemconfig(f"edge_left_{node.key}", 
-                                                              fill="#ff9800", width=2.5))
-            self.root.after(delay*2, lambda: self.animate_bst_search(key, canvas, node.left, delay, path))
-        else:
-            # Go right
-            self.root.after(delay, lambda: canvas.delete(text_id))
-            self.root.after(delay, lambda: canvas.itemconfig(f"node_{node.key}", fill=self.colors["primary"]))
-            self.root.after(delay, lambda: canvas.itemconfig(f"arc_{node.key}", fill="#3b77db"))
-            
-            if node.right:
-                self.root.after(delay, lambda: canvas.itemconfig(f"edge_right_{node.key}", 
-                                                              fill="#ff9800", width=2.5))
-            self.root.after(delay*2, lambda: self.animate_bst_search(key, canvas, node.right, delay, path))
-    
-    def show_bst_result(self, canvas, key, found, path, delay):
-        """Show the result of the BST search"""
+        canvas.create_rectangle(card_x - card_width / 2, card_y - card_height / 2,
+                                card_x + card_width / 2, card_y + card_height / 2,
+                                fill="#f5f5f5", outline="#dadce0", width=1, tags="compare_text_card")
+        canvas.create_text(card_x, card_y, text=compare_text,
+                        font=("Segoe UI", 12, "bold"), fill=self.colors["primary"], tags="compare_text_card")
+
+        # --- Schedule the next step ---
+        def next_step():
+            if key == node.key:
+                self.show_bst_result(canvas, key, True, path, delay, node_x, node_y)
+            elif key < node.key:
+                self.animate_bst_search(key, canvas, node.left, delay, path)
+            else:
+                self.animate_bst_search(key, canvas, node.right, delay, path)
+
+        self.root.after(delay, next_step)
+
+    def show_bst_result(self, canvas, key, found, path, delay, node_x=None, node_y=None):
         result_text = f"{'Found' if found else 'Not found'} key {key}"
         path_text = f"Search path: {' → '.join(map(str, path))}"
-        
-        y_pos = 500
+
+        # Get current visible area of the canvas
+        canvas.update_idletasks()
+        bbox = canvas.bbox("all")
+        canvas_w = canvas.winfo_width() or 800
+        canvas_h = canvas.winfo_height() or 600
+        x0 = canvas.canvasx(0)
+        y0 = canvas.canvasy(0)
+        x1 = x0 + canvas_w
+        y1 = y0 + canvas_h
+
+        # --- Dynamically measure text width ---
+        font1 = tkfont.Font(family="Segoe UI", size=12, weight="bold")
+        font2 = tkfont.Font(family="Segoe UI", size=10)
+        font3 = tkfont.Font(family="Segoe UI", size=9, slant="italic")
+
+        result_w = font1.measure(result_text)
+        path_w = font2.measure(path_text)
+        complexity_w = font3.measure("Time Complexity: O(log n) average, O(n) worst case")
+        card_width = max(340, result_w, path_w, complexity_w) + 40  # 40px padding
+
+        card_height = 90
+        x_pos = (x0 + x1) / 2
+        y_pos = (y0 + y1) / 2
+
         result_color = self.colors["secondary"] if found else self.colors["warning"]
-        
+        canvas.delete("result_card")
+
         # Create card for results
-        canvas.create_rectangle(100, y_pos-40, 700, y_pos+50, 
-                             fill="#f5f5f5", outline="#dadce0", width=1)
-        canvas.create_text(400, y_pos-20, text=result_text, 
-                        font=("Segoe UI", 12, "bold"), fill=result_color)
-        canvas.create_text(400, y_pos+10, text=path_text, 
-                        font=("Segoe UI", 10), fill=self.colors["text"])
-        
-        # Add complexity information
-        canvas.create_text(400, y_pos+35, 
-                        text=f"Time Complexity: O(log n) average, O(n) worst case", 
-                        font=("Segoe UI", 9, "italic"), fill="#555555")
+        canvas.create_rectangle(x_pos-card_width/2, y_pos-40, x_pos+card_width/2, y_pos+card_height-40,
+                            fill="#f5f5f5", outline="#dadce0", width=1, tags="result_card")
+        canvas.create_text(x_pos, y_pos-20, text=result_text,
+                        font=font1, fill=result_color, tags="result_card")
+        canvas.create_text(x_pos, y_pos+10, text=path_text,
+                        font=font2, fill=self.colors["text"], tags="result_card")
+        canvas.create_text(x_pos, y_pos+35,
+                        text=f"Time Complexity: O(log n) average, O(n) worst case",
+                        font=font3, fill="#555555", tags="result_card")
     
     def animate_hash_search(self, key, canvas, delay):
-        """Animate the hash table search process"""
-        # Calculate hash for the key
+        """Animate the hash table search process with linear probing"""
         hash_value = key % self.ht.size
-        
-        # Show hash calculation
-        calc_text = f"Hash calculation: {key} % {self.ht.size} = {hash_value}"
-        text_id = canvas.create_text(400, 60, text=calc_text, 
-                                  font=("Segoe UI", 11), fill=self.colors["text"])
-        
-        # Check if key exists in the bucket
-        bucket = self.ht.table[hash_value]
-        found = key in bucket
-        
-        # If bucket is not in visible range (beyond bucket_29), add a note
-        visible_buckets = min(30, self.ht.size)
-        
-        # Determine if the bucket is in visible range
-        bucket_visible = hash_value < visible_buckets
-        
-        # If bucket is visible, animate highlighting it and scroll to it
-        if bucket_visible:
-            # Calculate y position of the bucket
-            table_y = 100
-            row_height = 40
-            bucket_y = table_y + (hash_value + 1) * row_height
-            
-            # Scroll to make the bucket visible (after a short delay)
-            self.root.after(delay, lambda: canvas.yview_moveto((bucket_y - 150) / canvas.bbox("all")[3]))
-            
-            # Highlight the bucket
-            self.root.after(delay, lambda: canvas.itemconfig(f"bucket_{hash_value}", fill="#ffe0b2"))
-            self.root.after(delay*2, lambda: canvas.itemconfig(f"index_{hash_value}", fill="#ff9800"))
-        
-            # Clear previous text after delay
-            self.root.after(delay*3, lambda: canvas.delete(text_id))
-            
-            # Show searching in bucket text
-            search_text = f"Searching in bucket {hash_value}..."
-            search_id = canvas.create_text(400, 60, text=search_text, 
-                                        font=("Segoe UI", 11), fill=self.colors["text"])
-            
-            # Highlight found item or show not found
-            if found:
-                bucket_text = canvas.itemcget(f"items_{hash_value}", "text")
-                
-                # Update the text to highlight the found item
-                highlighted_text = bucket_text.replace(
-                    str(key), f"[{key}]"
-                )
-                self.root.after(delay*4, lambda: canvas.itemconfig(f"items_{hash_value}", 
-                                                                text=highlighted_text))
-                
-            self.root.after(delay*5, lambda: canvas.delete(search_id))
-        else:
-            # If bucket is not visible, display a message
-            self.root.after(delay*2, lambda: canvas.delete(text_id))
-            message_text = f"Bucket {hash_value} is outside the visible range (0-{visible_buckets-1})"
-            message_id = canvas.create_text(400, 60, text=message_text, 
-                                         font=("Segoe UI", 11), fill=self.colors["warning"])
-            self.root.after(delay*4, lambda: canvas.delete(message_id))
-        
-        # Show final result
-        self.root.after(delay*6, lambda: self.show_hash_result(canvas, key, hash_value, found, bucket, bucket_visible))
+        n = self.ht.size
+        row_height = 40
+        table_y = 100
+
+        def probe(i):
+            idx = (hash_value + i) % n
+            # Highlight current bucket
+            canvas.itemconfig(f"bucket_{idx}", fill="#ffe0b2")
+            canvas.itemconfig(f"index_{idx}", fill="#ff9800")
+            if i > 0:
+                prev_idx = (hash_value + i - 1) % n
+                canvas.itemconfig(f"bucket_{prev_idx}", fill="#f0f0f0" if prev_idx % 2 == 0 else "#ffffff")
+                canvas.itemconfig(f"index_{prev_idx}", fill="#202124")
+
+            # --- Scroll to bring the highlighted bucket into view ---
+            canvas.update_idletasks()
+            canvas_h = canvas.winfo_height() or 600
+            y_pos = table_y + (idx + 1) * row_height
+            y_target = max(0, y_pos - canvas_h // 2)
+            total_height = int(canvas.cget("scrollregion").split()[3]) if canvas.cget("scrollregion") else y_pos + 200
+            canvas.yview_moveto(y_target / max(1, total_height))
+
+            # --- Show hash formula card at bottom center ---
+            canvas.delete("formula_card")
+            canvas_w = canvas.winfo_width() or 800
+            x0 = canvas.canvasx(0)
+            y0 = canvas.canvasy(0)
+            x1 = x0 + canvas_w
+            y1 = y0 + canvas_h
+            card_width = 340
+            card_height = 50
+            card_x = (x0 + x1) / 2
+            card_y = y1 - card_height / 2 - 80  # 80px from bottom to avoid overlap with compare card
+
+            formula_text = f"Hash formula: h({key}) = {key} % {self.ht.size} = {hash_value}"
+            canvas.create_rectangle(card_x - card_width / 2, card_y - card_height / 2,
+                                    card_x + card_width / 2, card_y + card_height / 2,
+                                    fill="#e3f2fd", outline="#90caf9", width=1, tags="formula_card")
+            canvas.create_text(card_x, card_y, text=formula_text,
+                            font=("Segoe UI", 11, "italic"), fill=self.colors["primary"], tags="formula_card")
+
+            # --- Show compare card at bottom center ---
+            canvas.delete("compare_text_card")
+            card_y2 = y1 - card_height / 2 - 10
+            compare_val = self.ht.table[idx]
+            compare_text = f"Comparing {key} with {compare_val if compare_val is not None else '(empty)'} at bucket {idx}"
+            canvas.create_rectangle(card_x - card_width / 2, card_y2 - card_height / 2,
+                                    card_x + card_width / 2, card_y2 + card_height / 2,
+                                    fill="#f5f5f5", outline="#dadce0", width=1, tags="compare_text_card")
+            canvas.create_text(card_x, card_y2, text=compare_text,
+                            font=("Segoe UI", 12, "bold"), fill=self.colors["primary"], tags="compare_text_card")
+
+            # Continue as before...
+            if self.ht.table[idx] == key:
+                self.root.after(delay, lambda: self.show_hash_result(canvas, key, idx, True, self.ht.table[idx], True))
+            elif self.ht.table[idx] is None:
+                self.root.after(delay, lambda: self.show_hash_result(canvas, key, idx, False, None, True))
+            else:
+                self.root.after(delay, lambda: probe(i+1) if i+1 < n else self.show_hash_result(canvas, key, idx, False, None, True))
+
+        probe(0)
     
-    def show_hash_result(self, canvas, key, hash_value, found, bucket, bucket_visible=True):
-        """Show the result of the hash table search"""
+    def show_hash_result(self, canvas, key, hash_value, found, value, bucket_visible=True):
         result_text = f"{'Found' if found else 'Not found'} key {key} in bucket {hash_value}"
-        
+        bucket_text = f"Bucket {hash_value} value: {value if value is not None else '(empty)'}"
+
         # Format bucket contents to prevent overly long text
         if len(bucket) > 10:
-            bucket_display = str(bucket[:10])[:-1] + ", ... ]"  # Show first 10 items with ellipsis
+            bucket_display = str(bucket[:10])[:-1] + ", ... ]"
         else:
             bucket_display = bucket
-            
+
         bucket_text = f"Bucket {hash_value} contents: {bucket_display}"
-        
         if not bucket_visible:
             bucket_text += f"\n(This bucket is outside the visible range shown in the animation)"
-        
-        y_pos = 500
+
+        # --- Dynamically measure text width ---
+        font1 = tkfont.Font(family="Segoe UI", size=12, weight="bold")
+        font2 = tkfont.Font(family="Segoe UI", size=10)
+        font3 = tkfont.Font(family="Segoe UI", size=9, slant="italic")
+
+        result_w = font1.measure(result_text)
+        bucket_w = font2.measure(bucket_text)
+        complexity_w = font3.measure("Time Complexity: O(1) average, O(n) worst case")
+        card_width = max(340, result_w, bucket_w, complexity_w) + 40  # 40px padding
+
+        # Center in current visible area
+        canvas.update_idletasks()
+        bbox = canvas.bbox("all")
+        canvas_w = canvas.winfo_width() or 800
+        canvas_h = canvas.winfo_height() or 600
+        x0 = canvas.canvasx(0)
+        y0 = canvas.canvasy(0)
+        x1 = x0 + canvas_w
+        y1 = y0 + canvas_h
+        x_pos = (x0 + x1) / 2
+        y_pos = y1 - 60  # 60px from bottom
+
         result_color = self.colors["secondary"] if found else self.colors["warning"]
-        
+        canvas.delete("result_card")
+
         # Create card for results
-        canvas.create_rectangle(50, y_pos-40, 750, y_pos+80, 
-                             fill="#f5f5f5", outline="#dadce0", width=1)
-        canvas.create_text(400, y_pos-20, text=result_text, 
-                        font=("Segoe UI", 12, "bold"), fill=result_color)
-        canvas.create_text(400, y_pos+20, text=bucket_text, 
-                        font=("Segoe UI", 10), fill=self.colors["text"], width=650)
-        
-        # Add complexity information
-        canvas.create_text(400, y_pos+60, 
-                        text=f"Time Complexity: O(1) average, O(n) worst case", 
-                        font=("Segoe UI", 9, "italic"), fill="#555555")
+        canvas.create_rectangle(x_pos-card_width/2, y_pos-40, x_pos+card_width/2, y_pos+80,
+                            fill="#f5f5f5", outline="#dadce0", width=1, tags="result_card")
+        canvas.create_text(x_pos, y_pos-20, text=result_text,
+                        font=font1, fill=result_color, tags="result_card")
+        canvas.create_text(x_pos, y_pos+10, text=bucket_text,
+                        font=font2, fill=self.colors["text"], width=card_width-40, tags="result_card")
+        if compare_index is not None and bucket and compare_index < len(bucket):
+            compare_val = bucket[compare_index]
+            canvas.create_text(x_pos, y_pos+35, text=f"Comparing with: {compare_val}",
+                            font=font2, fill=self.colors["primary"], tags="result_card")
+        canvas.create_text(x_pos, y_pos+60,
+                        text=f"Time Complexity: O(1) average, O(n) worst case",
+                        font=font3, fill="#555555", tags="result_card")
         
     def insert_large_dataset(self):
         """Insert 10,000 random integers for large-scale performance testing"""
