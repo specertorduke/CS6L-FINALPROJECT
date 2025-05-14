@@ -1078,7 +1078,7 @@ class App:
         chart = FigureCanvasTkAgg(fig, summary_frame)
         chart.get_tk_widget().pack(padx=20, pady=10, fill=tk.BOTH)
         
-        save_btn = ttk.Button(card_frame, text="Save Chart", style="Action.TButton",
+        save_btn = ttk.Button(summary_frame, text="Save Chart", style="Action.TButton",
                       command=lambda fig=fig: self.save_chart(fig))
         save_btn.pack(padx=20, pady=(0, 10), anchor="e")
 
